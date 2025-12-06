@@ -1,0 +1,5 @@
+write_files:
+  - path: /letsencrypt/acme.json
+    permissions: '0600'
+    content: |
+      {}
