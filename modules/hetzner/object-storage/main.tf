@@ -12,6 +12,7 @@ resource "minio_s3_bucket" "buckets" {
   acl           = each.value.acl
 
   lifecycle {
-    ignore_changes = all
+    prevent_destroy = true
+    ignore_changes  = [bucket_prefix]
   }
 }
