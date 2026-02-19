@@ -10,4 +10,8 @@ resource "minio_s3_bucket" "buckets" {
   for_each = var.buckets
   bucket        = each.value.name
   acl           = each.value.acl
+
+  lifecycle {
+    ignore_changes = [bucket_prefix]
+  }
 }
