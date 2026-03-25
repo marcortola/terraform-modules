@@ -35,7 +35,8 @@ resource "hcloud_server" "server" {
 
   network {
     network_id = var.network_id
-    alias_ips = []
+    ip         = length(var.network_ips) > 0 ? var.network_ips[count.index] : null
+    alias_ips  = []
   }
 
   delete_protection  = true

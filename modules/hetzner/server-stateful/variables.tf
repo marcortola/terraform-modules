@@ -51,6 +51,12 @@ variable "keep_disk_size_to_allow_downgrades" {
   default     = true
 }
 
+variable "network_ips" {
+  type        = list(string)
+  description = "Static private IP addresses for each server instance. Length must match instances_count, or leave empty for auto-assignment."
+  default     = []
+}
+
 variable "enable_backups" {
   description = "Whether to enable cloud backups for the server"
   type        = bool
