@@ -3,5 +3,5 @@ output "server_ips" {
 }
 
 output "server_private_ips" {
-  value = hcloud_server.server[*].network[0].ip
+  value = [for s in hcloud_server.server : one(s.network).ip]
 }
