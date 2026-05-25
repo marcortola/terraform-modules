@@ -470,6 +470,7 @@ Rule fields:
 - The host must be **proxied** (orange-cloud) at the DNS layer for the redirect to fire. If the host has no real origin, point its A record at `192.0.2.1` (RFC 5737 TEST-NET) with `proxied = true`; the IP is unreachable but the request is short-circuited at the edge.
 - The rule fires before origin: no backend is contacted.
 - Use `preserve_path = false` together with a fully-qualified `target_url` (e.g. `https://new-domain.com/welcome`) when you want every request on the source host to land on a fixed path.
+- **Required Cloudflare API token permission:** `Zone → Config Rules → Edit` on the source zone. Without it, `terraform apply` fails with `request is not authorized`. (DNS, Workers, and the other modules' permissions are not sufficient on their own.)
 
 ---
 
