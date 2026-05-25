@@ -20,6 +20,7 @@ Reusable Terraform modules for provisioning infrastructure on **Hetzner Cloud** 
 | [hetzner/object-storage](#hetznerobject-storage)     | S3-compatible buckets                               |
 | [cloudflare/dns](#cloudflaredns)                     | DNS records                                         |
 | [cloudflare/auth](#cloudflareauth)                   | Worker-based HTTP auth and noindex headers          |
+| [cloudflare/redirect](#cloudflareredirect)           | Per-host 301/302 redirects via Single Redirects     |
 
 ## Complete Example
 
@@ -416,6 +417,59 @@ Subdomain options:
 
 - `.well-known` paths are excluded from auth (for ACME validation)
 - Three worker scripts are deployed based on auth/noindex combinations
+
+---
+
+### cloudflare/redirect
+
+Per-host URL redirects implemented as a Cloudflare **Single Redirects** ruleset (`http_request_dynamic_redirect` phase, zone-scoped). Use this to retire a domain by 301-ing some or all of its hosts to a replacement, preserving path and query string. Each map entry produces one rule inside a single ruleset.
+
+```hcl
+module "redirect" {
+  source = "git::https://github.com/marcortola/terraform-modules.git//modules/cloudflare/redirect?ref=v1.6.0"
+
+  token = var.cloudflare_token
+  zone  = "old-domain.com"
+  name  = "old-domain"
+
+  rules = {
+    apex = {
+      source_host = "@"
+      target_url  = "https://new-domain.com"
+    }
+    www = {
+      source_host = "www"
+      target_url  = "https://new-domain.com"
+    }
+    clubs = {
+      source_host = "clubs"
+      target_url  = "https://clubs.new-domain.com"
+    }
+  }
+}
+```
+
+| Variable  | Required | Default | Description                                |
+|-----------|----------|---------|--------------------------------------------|
+| `token`   | yes      | -       | Cloudflare API token                       |
+| `zone`    | yes      | -       | Source domain (the one to redirect from)   |
+| `name`    | yes      | -       | Resource identifier                        |
+| `rules`   | no       | `{}`    | Map of redirect rules                      |
+
+Rule fields:
+
+- `source_host` (required): subdomain label (e.g. `www`) or `@` for the apex
+- `target_url` (required): absolute destination URL (e.g. `https://new-domain.com`)
+- `preserve_path` (optional, default `true`): append the original path to `target_url`
+- `preserve_query` (optional, default `true`): forward the original query string
+- `status_code` (optional, default `301`): HTTP redirect status (301, 302, 307, 308)
+
+**Notes:**
+
+- Cloudflare allows only **one ruleset per zone per phase** — do not instantiate this module twice against the same `zone`.
+- The host must be **proxied** (orange-cloud) at the DNS layer for the redirect to fire. If the host has no real origin, point its A record at `192.0.2.1` (RFC 5737 TEST-NET) with `proxied = true`; the IP is unreachable but the request is short-circuited at the edge.
+- The rule fires before origin: no backend is contacted.
+- Use `preserve_path = false` together with a fully-qualified `target_url` (e.g. `https://new-domain.com/welcome`) when you want every request on the source host to land on a fixed path.
 
 ---
 
