@@ -445,6 +445,11 @@ module "redirect" {
       source_host = "clubs"
       target_url  = "https://clubs.new-domain.com"
     }
+    api = {
+      source_host     = "api"
+      target_url      = "https://api.new-domain.com"
+      placeholder_dns = true # host has no real origin; module creates the proxied record
+    }
   }
 }
 ```
@@ -463,11 +468,14 @@ Rule fields:
 - `preserve_path` (optional, default `true`): append the original path to `target_url`
 - `preserve_query` (optional, default `true`): forward the original query string
 - `status_code` (optional, default `301`): HTTP redirect status (301, 302, 307, 308)
+- `placeholder_dns` (optional, default `false`): when `true`, the module creates a proxied A record for `source_host` pointing at `192.0.2.1`, so the redirect fires for a host with no real origin (see notes). Leave `false` for any host that already resolves to a real origin — otherwise the placeholder collides with the existing record.
 
 **Notes:**
 
 - Cloudflare allows only **one ruleset per zone per phase** — do not instantiate this module twice against the same `zone`.
-- The host must be **proxied** (orange-cloud) at the DNS layer for the redirect to fire. If the host has no real origin, point its A record at `192.0.2.1` (RFC 5737 TEST-NET) with `proxied = true`; the IP is unreachable but the request is short-circuited at the edge.
+- The host must be **proxied** (orange-cloud) at the DNS layer for the redirect to fire. A Dynamic Redirect rule only acts on traffic Cloudflare actually proxies. For a host with no real origin, set `placeholder_dns = true` and the module creates a proxied A record at `192.0.2.1` (RFC 5737 TEST-NET) for you — unroutable, never contacted, but enough to route the request through the edge where the redirect short-circuits it. (Equivalently you can create that record yourself in the `cloudflare/dns` module and leave `placeholder_dns = false`.)
+- Using `placeholder_dns = true` requires the API token to also hold **`Zone → DNS → Edit`** on the source zone, in addition to the Single Redirect permission below.
+- Do not set `placeholder_dns = true` for `source_host = "@"` (apex) when the zone already has an apex record — the placeholder will collide with it.
 - The rule fires before origin: no backend is contacted.
 - Use `preserve_path = false` together with a fully-qualified `target_url` (e.g. `https://new-domain.com/welcome`) when you want every request on the source host to land on a fixed path.
 - **Required Cloudflare API token permission:** `Zone → Single Redirect → Edit` on the source zone, with Zone Resources scoped to include that zone. Without it, `terraform apply` fails with `request is not authorized`. (`Zone → Config Rules`, `Zone → Transform Rules`, and `Zone → WAF` permissions do NOT cover the `http_request_dynamic_redirect` phase used by this module.)

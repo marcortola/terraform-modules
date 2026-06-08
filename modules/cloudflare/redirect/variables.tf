@@ -17,11 +17,12 @@ variable "zone" {
 variable "rules" {
   description = "A map of per-host redirect rules. Each entry produces one rule in a single Cloudflare Dynamic Redirect ruleset on the zone."
   type = map(object({
-    source_host    = string
-    target_url     = string
-    preserve_path  = optional(bool, true)
-    preserve_query = optional(bool, true)
-    status_code    = optional(number, 301)
+    source_host     = string
+    target_url      = string
+    preserve_path   = optional(bool, true)
+    preserve_query  = optional(bool, true)
+    status_code     = optional(number, 301)
+    placeholder_dns = optional(bool, false)
   }))
   default = {}
 }
