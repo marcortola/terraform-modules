@@ -7,5 +7,11 @@
       "tftoken": true
     }
   },
-  "remoteUser": "vscode"
+  "remoteUser": "vscode",
+  "customizations": {
+    "jetbrains": {
+      "backend": "IntelliJ",
+      "plugins": ["org.intellij.plugins.hcl"]
+    }
+  }
 }
