@@ -8,8 +8,10 @@ async function handleRequest(request) {
     const USERNAME = self["shared_auth_user"];
     const PASSWORD = self["shared_auth_password"];
 
-    // If the request is for a .well-known route, don't protect it
-    if (request.url.includes('.well-known')) {
+    // If the request is for a .well-known route, don't protect it.
+    // Match the path prefix only: a substring check on the full URL would let
+    // any request bypass auth by placing ".well-known" in the query string.
+    if (new URL(request.url).pathname.startsWith('/.well-known/')) {
         return await fetch(request);
     }
 
