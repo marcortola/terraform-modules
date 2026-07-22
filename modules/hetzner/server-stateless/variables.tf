@@ -62,3 +62,13 @@ variable "prevent_destroy" {
   type        = bool
   default     = false
 }
+
+variable "additional_cloudinit_parts" {
+  description = "Extra cloud-init parts appended to the server's user_data (e.g. an nftables egress ACL). Rendered after the base parts; each merges onto the accumulated config with list-append semantics by default. Applies only on fresh hosts (user_data is in ignore_changes)."
+  type = list(object({
+    content_type = optional(string, "text/cloud-config")
+    content      = string
+    merge_type   = optional(string, "list(append)+dict(recurse_array)+str()")
+  }))
+  default = []
+}

@@ -76,4 +76,13 @@ data "cloudinit_config" "data_cloudinit_config_server" {
     content      = file("${path.module}/../../../cloudinit/server.yml")
     merge_type   = "list(append)+dict(recurse_array)+str()"
   }
+
+  dynamic "part" {
+    for_each = var.additional_cloudinit_parts
+    content {
+      content_type = part.value.content_type
+      content      = part.value.content
+      merge_type   = part.value.merge_type
+    }
+  }
 }
