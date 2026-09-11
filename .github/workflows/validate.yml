@@ -13,6 +13,10 @@ jobs:
     name: Validate Terraform
     runs-on: ubuntu-latest
     strategy:
+      # One module's provider download flaking should not cancel the other legs and hide
+      # whether they would have passed - especially now that validate-complete aggregates
+      # them into a required status check.
+      fail-fast: false
       matrix:
         module:
           - hetzner/server-stateless
