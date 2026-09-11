@@ -1,63 +1,70 @@
 version: 2
+multi-ecosystem-groups:
+  repository-dependencies:
+    schedule:
+      interval: weekly
+      day: monday
+      time: 09:50
+      timezone: Europe/Madrid
+    commit-message:
+      prefix: chore(deps)
 updates:
-  - package-ecosystem: "terraform"
+  - package-ecosystem: terraform
     directories:
-      - "/modules/cloudflare/auth"
-      - "/modules/cloudflare/dns"
-      - "/modules/cloudflare/redirect"
-      - "/modules/hetzner/firewall"
-      - "/modules/hetzner/network"
-      - "/modules/hetzner/object-storage"
-      - "/modules/hetzner/server-stateful"
-      - "/modules/hetzner/server-stateless"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:50"
-      timezone: "Europe/Madrid"
-    commit-message:
-      prefix: "chore(deps)"
+      - /modules/cloudflare/auth
+      - /modules/cloudflare/dns
+      - /modules/cloudflare/redirect
+      - /modules/hetzner/firewall
+      - /modules/hetzner/network
+      - /modules/hetzner/object-storage
+      - /modules/hetzner/server-stateful
+      - /modules/hetzner/server-stateless
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - version-update:semver-major
     groups:
-      minor-and-patch:
-        applies-to: "version-updates"
+      security-updates:
+        applies-to: security-updates
         patterns:
           - "*"
         update-types:
-          - "minor"
-          - "patch"
-
-  - package-ecosystem: "devcontainers"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:50"
-      timezone: "Europe/Madrid"
-    commit-message:
-      prefix: "chore(deps)"
+          - patch
+          - minor
+    patterns:
+      - "*"
+    multi-ecosystem-group: repository-dependencies
+  - package-ecosystem: devcontainers
+    directory: /
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - version-update:semver-major
     groups:
-      minor-and-patch:
-        applies-to: "version-updates"
+      security-updates:
+        applies-to: security-updates
         patterns:
           - "*"
         update-types:
-          - "minor"
-          - "patch"
-
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:50"
-      timezone: "Europe/Madrid"
-    commit-message:
-      prefix: "chore(deps)"
+          - patch
+          - minor
+    patterns:
+      - "*"
+    multi-ecosystem-group: repository-dependencies
+  - package-ecosystem: github-actions
+    directory: /
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - version-update:semver-major
     groups:
-      minor-and-patch:
-        applies-to: "version-updates"
+      security-updates:
+        applies-to: security-updates
         patterns:
           - "*"
         update-types:
-          - "minor"
-          - "patch"
+          - patch
+          - minor
+    patterns:
+      - "*"
+    multi-ecosystem-group: repository-dependencies
