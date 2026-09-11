@@ -13,6 +13,10 @@ jobs:
     name: Validate Terraform
     runs-on: ubuntu-latest
     strategy:
+      # One module's provider download flaking should not cancel the other legs and hide
+      # whether they would have passed - especially now that validate-complete aggregates
+      # them into a required status check.
+      fail-fast: false
       matrix:
         module:
           - hetzner/server-stateless
@@ -38,3 +42,18 @@ jobs:
       - name: Terraform Validate
         run: terraform validate
         working-directory: modules/${{ matrix.module }}
+
+  # Aggregates the matrix above into one check with a stable name. The individual legs are
+  # named "Validate Terraform (cloudflare/dns)" and so on, so they expand and rename as
+  # modules are added or renamed and cannot be listed as required status checks on the
+  # branch. This job can.
+  validate-complete:
+    needs: validate
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail unless every module validated
+        if: needs.validate.result != 'success'
+        run: |
+          echo "validate concluded: ${{ needs.validate.result }}"
+          exit 1

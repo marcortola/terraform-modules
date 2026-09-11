@@ -19,28 +19,8 @@ updates:
       - /modules/hetzner/object-storage
       - /modules/hetzner/server-stateful
       - /modules/hetzner/server-stateless
-    ignore:
-      - dependency-name: "*"
-        update-types:
-          - version-update:semver-major
-    groups:
-      security-updates:
-        applies-to: security-updates
-        patterns:
-          - "*"
-        update-types:
-          - patch
-          - minor
-    patterns:
-      - "*"
-    multi-ecosystem-group: repository-dependencies
-    allow:
-      - dependency-name: "*"
-        update-types:
-          - version-update:semver-patch
-          - version-update:semver-minor
-  - package-ecosystem: devcontainers
-    directory: /
+    cooldown:
+      default-days: 7
     ignore:
       - dependency-name: "*"
         update-types:
@@ -63,6 +43,8 @@ updates:
           - version-update:semver-minor
   - package-ecosystem: github-actions
     directory: /
+    cooldown:
+      default-days: 7
     ignore:
       - dependency-name: "*"
         update-types:
