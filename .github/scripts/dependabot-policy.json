@@ -1,0 +1,13 @@
+{
+  "workflows": [
+    {
+      "path": ".github/workflows/validate.yml",
+      "name": "Validate",
+      "trigger": {
+        "branches": [
+          "main"
+        ]
+      }
+    }
+  ]
+}
