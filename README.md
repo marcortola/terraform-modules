@@ -4,7 +4,7 @@ Reusable Terraform modules for provisioning infrastructure on **Hetzner Cloud** 
 
 ## Prerequisites
 
-- Terraform >= 1.0
+- Nix + direnv (`direnv allow` loads the Terraform version pinned by `flake.lock`)
 - Hetzner Cloud API token
 - Cloudflare API token (for DNS/auth modules)
 - S3 credentials (for object storage module)

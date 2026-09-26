@@ -30,3 +30,6 @@ secrets/
 
 # Claude
 .claude/
+
+# nix-direnv evaluation cache
+.direnv/
