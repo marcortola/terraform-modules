@@ -33,3 +33,7 @@ secrets/
 
 # nix-direnv evaluation cache
 .direnv/
+
+# Nix build symlinks
+/result
+/result-*
