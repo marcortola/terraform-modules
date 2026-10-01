@@ -12,6 +12,8 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# Documentation-only PRs retain successful validation jobs without running toolchains or tests.
+# Dependency, source and workflow edits always run the complete gate.
 jobs:
   validate:
     name: Validate Terraform
@@ -33,17 +35,48 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Select validation scope
+        id: changes
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT_NAME" != pull_request ]; then
+            echo 'run=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # checkout uses the synthetic PR merge; its first parent is the target branch.
+          git diff --no-renames --name-only -z HEAD^1 HEAD > "$RUNNER_TEMP/ci-changes"
+          run=false
+          changed=false
+          while IFS= read -r -d '' path; do
+            changed=true
+            case "$path" in
+              README.md|AGENTS.md|CLAUDE.md|docs/*.md) ;;
+              *) run=true ;;
+            esac
+          done < "$RUNNER_TEMP/ci-changes"
+          if [ "$changed" = false ]; then run=true; fi
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+          if [ "$run" = false ]; then
+            echo 'Documentation-only change; validation check remains successful.'
+          fi
 
       - name: Setup Terraform
+        if: steps.changes.outputs.run == 'true'
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "1.5.0"
 
       - name: Terraform Init
+        if: steps.changes.outputs.run == 'true'
         run: terraform init -backend=false
         working-directory: modules/${{ matrix.module }}
 
       - name: Terraform Validate
+        if: steps.changes.outputs.run == 'true'
         run: terraform validate
         working-directory: modules/${{ matrix.module }}
 
