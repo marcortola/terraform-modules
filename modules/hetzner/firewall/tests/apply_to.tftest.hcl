@@ -1,4 +1,4 @@
-# Plan-only tests for attaching the firewall through apply_to. Needs Terraform 1.7+ for mock_provider.
+# Tests for attaching the firewall through apply_to. Needs Terraform 1.7+ for mock_provider.
 
 mock_provider "hcloud" {}
 
