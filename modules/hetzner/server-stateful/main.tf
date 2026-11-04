@@ -10,12 +10,12 @@ locals {
 }
 
 resource "hcloud_server" "server" {
-  count       = var.instances_count
-  name        = "${var.name}-stateful-${count.index + 1}"
-  location    = var.zone
-  server_type = var.type
-  image       = var.os
-  ssh_keys = [var.ssh_key_resource.id]
+  count        = var.instances_count
+  name         = "${var.name}-stateful-${count.index + 1}"
+  location     = var.zone
+  server_type  = var.type
+  image        = var.os
+  ssh_keys     = [var.ssh_key_resource.id]
   firewall_ids = [module.firewall.ingress_id]
 
   keep_disk = var.keep_disk_size_to_allow_downgrades
@@ -70,7 +70,7 @@ data "cloudinit_config" "data_cloudinit_config_server" {
 
   part {
     content_type = "text/cloud-config"
-    content = file("${path.module}/../../../cloudinit/server.yml")
+    content      = file("${path.module}/../../../cloudinit/server.yml")
     merge_type   = "list(append)+dict(recurse_array)+str()"
   }
 }

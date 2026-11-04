@@ -8,8 +8,8 @@ provider "minio" {
 
 resource "minio_s3_bucket" "buckets" {
   for_each = var.buckets
-  bucket        = each.value.name
-  acl           = each.value.acl
+  bucket   = each.value.name
+  acl      = each.value.acl
 
   lifecycle {
     prevent_destroy = true

@@ -17,11 +17,11 @@ variable "zone" {
 variable "records" {
   description = "A map of DNS records to be created"
   type = map(object({
-    name = optional(string, "@")
-    value = string
-    type  = string
-    ttl = optional(number)
-    proxied = optional(bool)
+    name     = optional(string, "@")
+    value    = string
+    type     = string
+    ttl      = optional(number)
+    proxied  = optional(bool)
     priority = optional(number)
   }))
 }
