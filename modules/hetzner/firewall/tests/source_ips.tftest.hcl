@@ -97,3 +97,73 @@ run "rejects_source_ip_without_prefix" {
 
   expect_failures = [var.rule]
 }
+
+run "rejects_ipv4_cidr_with_host_bits" {
+  command = plan
+
+  variables {
+    rule = [
+      { protocol = "tcp", port = 443, source_ips = ["10.0.0.5/24"] },
+    ]
+  }
+
+  expect_failures = [var.rule]
+}
+
+run "rejects_ipv6_cidr_with_host_bits" {
+  command = plan
+
+  variables {
+    rule = [
+      { protocol = "tcp", port = 443, source_ips = ["2001:db8::1/32"] },
+    ]
+  }
+
+  expect_failures = [var.rule]
+}
+
+run "rejects_non_canonical_ipv6" {
+  command = plan
+
+  variables {
+    rule = [
+      { protocol = "tcp", port = 443, source_ips = ["2001:DB8::/32"] },
+    ]
+  }
+
+  expect_failures = [var.rule]
+}
+
+run "rejects_one_bad_entry_among_valid_ones" {
+  command = plan
+
+  variables {
+    rule = [
+      { protocol = "tcp", port = 443, source_ips = ["173.245.48.0/20", "173.245.48.1/20"] },
+    ]
+  }
+
+  expect_failures = [var.rule]
+}
+
+run "accepts_cloudflare_ranges_and_host_routes" {
+  command = plan
+
+  variables {
+    rule = [
+      {
+        protocol = "tcp"
+        port     = 443
+        source_ips = [
+          "173.245.48.0/20", "103.21.244.0/22", "2400:cb00::/32", "2606:4700::/32",
+          "2a06:98c0::/29", "203.0.113.10/32", "2001:db8::1/128",
+        ]
+      },
+    ]
+  }
+
+  assert {
+    condition     = length(one(hcloud_firewall.ingress.rule).source_ips) == 7
+    error_message = "Canonical network CIDRs, including /32 and /128 host routes, must be accepted."
+  }
+}
