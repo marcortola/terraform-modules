@@ -4,8 +4,9 @@ Reusable Terraform modules for provisioning infrastructure on **Hetzner Cloud** 
 
 ## Prerequisites
 
-- Terraform; the supported optional Nix devShell pins it (`direnv allow` or
-  `nix develop`), but a compatible native installation also works
+- Terraform 1.3 or later; the supported optional Nix devShell pins it (`direnv allow` or
+  `nix develop`), but a compatible native installation also works. The module tests
+  (`terraform test` in a module that has a `tests/` directory) need Terraform 1.7 or later.
 - Hetzner Cloud API token
 - Cloudflare API token (for DNS/auth modules)
 - S3 credentials (for object storage module)
@@ -190,6 +191,44 @@ module "network" {
 
 ---
 
+### hetzner/firewall
+
+Inbound firewall. The server modules call it for their base and additional rules and
+attach it to their servers.
+
+```hcl
+module "firewall" {
+  source = "git::https://github.com/marcortola/terraform-modules.git//modules/hetzner/firewall?ref=v1.9.0"
+
+  name = "web"
+
+  rule = [
+    { protocol = "tcp", port = 443, source_ips = ["173.245.48.0/20", "2400:cb00::/32"] },
+    { protocol = "tcp", port = 937 }, # open to all
+  ]
+}
+```
+
+| Variable | Required | Default | Description               |
+|----------|----------|---------|---------------------------|
+| `name`   | yes      | -       | Name identifier           |
+| `rule`   | yes      | -       | Inbound rules (see below) |
+
+Rule fields:
+
+- `protocol` (required): `tcp` or `udp`
+- `port` (required): port number
+- `source_ips` (optional, default `["0.0.0.0/0", "::/0"]`): CIDR blocks allowed to
+  connect; it must not be empty, and a single address needs a prefix such as `/32`.
+  Hetzner Cloud firewalls filter only public interfaces, so list public addresses
+
+| Output       | Description                                    |
+|--------------|------------------------------------------------|
+| `ingress_id` | Firewall ID (pass to `hcloud_server`)          |
+| `rules`      | Rendered inbound rules, including `source_ips` |
+
+---
+
 ### hetzner/server-stateful
 
 Database/stateful servers with delete protection and automatic backups enabled.
@@ -210,8 +249,8 @@ module "database" {
   enable_backups  = true
 
   additional_firewall_rules = [
-    { protocol = "tcp", port = 5432 }, # PostgreSQL
-    { protocol = "tcp", port = 6379 }   # Redis
+    { protocol = "tcp", port = 5432, source_ips = ["203.0.113.10/32"] }, # PostgreSQL, admin IP only
+    { protocol = "tcp", port = 6379 }                                    # Redis, open to all
   ]
 }
 ```
@@ -226,7 +265,7 @@ module "database" {
 | `instances_count`           | no       | `1`            | Number of servers                    |
 | `os`                        | no       | `ubuntu-24.04` | OS image                             |
 | `enable_backups`            | no       | `true`         | Enable Hetzner backups               |
-| `additional_firewall_rules` | no       | `[]`           | Extra ports to open                  |
+| `additional_firewall_rules` | no       | `[]`           | Extra rules to open (see below)      |
 
 | Output       | Description                   |
 |--------------|-------------------------------|
@@ -236,7 +275,10 @@ module "database" {
 
 - Delete and rebuild protection enabled
 - Lifecycle `prevent_destroy` is set
-- Base firewall opens port 937 (SSH)
+- Base firewall opens port 937 (SSH) to all addresses
+- Each `additional_firewall_rules` entry takes `protocol`, `port` and an optional
+  `source_ips` list of CIDR blocks; without `source_ips` the rule accepts
+  `0.0.0.0/0` and `::/0`
 
 ---
 
@@ -257,19 +299,33 @@ module "web" {
   zone            = "nbg1"
   instances_count = 3
   prevent_destroy = false
+
+  # Accept HTTP and HTTPS only from these CIDR blocks (default: all addresses).
+  # Port 937 (SSH) stays open to all. Requires v1.9.0 or later.
+  web_source_ips = [
+    "173.245.48.0/20", # Cloudflare ranges, abridged
+    "2400:cb00::/32",
+    "203.0.113.10/32", # monitoring
+  ]
+
+  additional_firewall_rules = [
+    { protocol = "tcp", port = 9100, source_ips = ["203.0.113.20/32"] }, # node exporter, monitoring host
+  ]
 }
 ```
 
-| Variable           | Required | Default        | Description                |
-|--------------------|----------|----------------|----------------------------|
-| `name`             | yes      | -              | Name identifier            |
-| `type`             | yes      | -              | Server type                |
-| `network_id`       | yes      | -              | VPC ID from network module |
-| `ssh_key_resource` | yes      | -              | hcloud_ssh_key resource    |
-| `zone`             | no       | `nbg1`         | Datacenter                 |
-| `instances_count`  | no       | `1`            | Number of servers          |
-| `os`               | no       | `ubuntu-24.04` | OS image                   |
-| `prevent_destroy`  | no       | `false`        | Enable delete protection   |
+| Variable                    | Required | Default                  | Description                                  |
+|-----------------------------|----------|--------------------------|----------------------------------------------|
+| `name`                      | yes      | -                        | Name identifier                              |
+| `type`                      | yes      | -                        | Server type                                  |
+| `network_id`                | yes      | -                        | VPC ID from network module                   |
+| `ssh_key_resource`          | yes      | -                        | hcloud_ssh_key resource                      |
+| `zone`                      | no       | `nbg1`                   | Datacenter                                   |
+| `instances_count`           | no       | `1`                      | Number of servers                            |
+| `os`                        | no       | `ubuntu-24.04`           | OS image                                     |
+| `prevent_destroy`           | no       | `false`                  | Enable delete protection                     |
+| `web_source_ips`            | no       | `["0.0.0.0/0", "::/0"]`  | CIDR blocks allowed on ports 80 and 443      |
+| `additional_firewall_rules` | no       | `[]`                     | Extra rules to open (see below)              |
 
 | Output       | Description                   |
 |--------------|-------------------------------|
@@ -278,7 +334,11 @@ module "web" {
 **Notes:**
 
 - No automatic backups (unlike stateful)
-- Base firewall opens ports 80, 443, 937
+- Base firewall opens ports 80 and 443 to `web_source_ips` (all addresses by default)
+  and port 937 (SSH) to all addresses
+- Each `additional_firewall_rules` entry takes `protocol`, `port` and an optional
+  `source_ips` list of CIDR blocks; without `source_ips` the rule accepts
+  `0.0.0.0/0` and `::/0`
 
 ---
 

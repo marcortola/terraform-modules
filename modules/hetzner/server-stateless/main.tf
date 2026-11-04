@@ -1,16 +1,20 @@
 locals {
+  # Port 937 (SSH) keeps the firewall module's default sources: all IPv4 and IPv6 addresses.
   base_firewall_rules = [
     {
-      protocol = "tcp"
-      port     = 80
+      protocol   = "tcp"
+      port       = 80
+      source_ips = var.web_source_ips
     },
     {
-      protocol = "tcp"
-      port     = 443
+      protocol   = "tcp"
+      port       = 443
+      source_ips = var.web_source_ips
     },
     {
-      protocol = "tcp"
-      port     = 937
+      protocol   = "tcp"
+      port       = 937
+      source_ips = null
     }
   ]
 
