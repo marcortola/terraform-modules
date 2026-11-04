@@ -206,13 +206,21 @@ module "firewall" {
     { protocol = "tcp", port = 443, source_ips = ["173.245.48.0/20", "2400:cb00::/32"] },
     { protocol = "tcp", port = 937 }, # open to all
   ]
+
+  # Optional: attach the firewall here. The server modules attach it through
+  # hcloud_server.firewall_ids instead and pass no apply_to.
+  apply_to = [
+    { server = hcloud_server.web.id },
+    { label_selector = "role=web" },
+  ]
 }
 ```
 
-| Variable | Required | Default | Description               |
-|----------|----------|---------|---------------------------|
-| `name`   | yes      | -       | Name identifier           |
-| `rule`   | yes      | -       | Inbound rules (see below) |
+| Variable   | Required | Default | Description                               |
+|------------|----------|---------|-------------------------------------------|
+| `name`     | yes      | -       | Name identifier                           |
+| `rule`     | yes      | -       | Inbound rules (see below)                 |
+| `apply_to` | no       | `[]`    | Servers to attach the firewall to (below) |
 
 Rule fields:
 
@@ -220,7 +228,17 @@ Rule fields:
 - `port` (required): port number
 - `source_ips` (optional, default `["0.0.0.0/0", "::/0"]`): CIDR blocks allowed to
   connect; it must not be empty, and a single address needs a prefix such as `/32`.
-  Hetzner Cloud firewalls filter only public interfaces, so list public addresses
+  Each entry must be a network address in canonical form: no host bits set
+  (`10.0.0.0/24`, not `10.0.0.5/24`) and IPv6 in lower case with zeros compressed
+  (`2001:db8::/32`, not `2001:DB8:0::/32`), the form Terraform's `cidrhost` prints.
+  Hetzner Cloud firewalls filter only public interfaces, so list public addresses.
+  Requires v1.9.0 or later; older versions silently ignore `source_ips` and open the
+  port to all addresses.
+
+`apply_to` entries take exactly one of:
+
+- `server`: a server ID
+- `label_selector`: a label selector, such as `role=web`
 
 | Output       | Description                                    |
 |--------------|------------------------------------------------|
@@ -235,7 +253,7 @@ Database/stateful servers with delete protection and automatic backups enabled.
 
 ```hcl
 module "database" {
-  source = "git::https://github.com/marcortola/terraform-modules.git//modules/hetzner/server-stateful?ref=v1.0.0"
+  source = "git::https://github.com/marcortola/terraform-modules.git//modules/hetzner/server-stateful?ref=v1.9.0"
 
   name       = "postgres"
   type       = "cx32"
@@ -248,6 +266,8 @@ module "database" {
   os              = "ubuntu-24.04"
   enable_backups  = true
 
+  # source_ips requires v1.9.0 or later; older versions silently ignore it and
+  # open the port to all addresses.
   additional_firewall_rules = [
     { protocol = "tcp", port = 5432, source_ips = ["203.0.113.10/32"] }, # PostgreSQL, admin IP only
     { protocol = "tcp", port = 6379 }                                    # Redis, open to all
@@ -277,8 +297,9 @@ module "database" {
 - Lifecycle `prevent_destroy` is set
 - Base firewall opens port 937 (SSH) to all addresses
 - Each `additional_firewall_rules` entry takes `protocol`, `port` and an optional
-  `source_ips` list of CIDR blocks; without `source_ips` the rule accepts
-  `0.0.0.0/0` and `::/0`
+  `source_ips` list of CIDR blocks (see [hetzner/firewall](#hetznerfirewall)); without
+  `source_ips` the rule accepts `0.0.0.0/0` and `::/0`. `source_ips` requires v1.9.0
+  or later: older versions silently ignore it and open the port to all addresses.
 
 ---
 
@@ -288,7 +309,7 @@ Web/application servers designed for ephemeral workloads.
 
 ```hcl
 module "web" {
-  source = "git::https://github.com/marcortola/terraform-modules.git//modules/hetzner/server-stateless?ref=v1.0.0"
+  source = "git::https://github.com/marcortola/terraform-modules.git//modules/hetzner/server-stateless?ref=v1.9.0"
 
   name       = "web"
   type       = "cx22"
@@ -301,7 +322,9 @@ module "web" {
   prevent_destroy = false
 
   # Accept HTTP and HTTPS only from these CIDR blocks (default: all addresses).
-  # Port 937 (SSH) stays open to all. Requires v1.9.0 or later.
+  # Port 937 (SSH) stays open to all. web_source_ips and per-rule source_ips
+  # require v1.9.0 or later; older versions reject web_source_ips but silently
+  # ignore per-rule source_ips, which opens that port to all addresses.
   web_source_ips = [
     "173.245.48.0/20", # Cloudflare ranges, abridged
     "2400:cb00::/32",
@@ -337,8 +360,9 @@ module "web" {
 - Base firewall opens ports 80 and 443 to `web_source_ips` (all addresses by default)
   and port 937 (SSH) to all addresses
 - Each `additional_firewall_rules` entry takes `protocol`, `port` and an optional
-  `source_ips` list of CIDR blocks; without `source_ips` the rule accepts
-  `0.0.0.0/0` and `::/0`
+  `source_ips` list of CIDR blocks (see [hetzner/firewall](#hetznerfirewall)); without
+  `source_ips` the rule accepts `0.0.0.0/0` and `::/0`. `source_ips` requires v1.9.0
+  or later: older versions silently ignore it and open the port to all addresses.
 
 ---
 
