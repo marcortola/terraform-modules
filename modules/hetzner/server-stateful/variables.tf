@@ -38,11 +38,12 @@ variable "network_id" {
 
 variable "additional_firewall_rules" {
   type = list(object({
-    protocol = string
-    port     = number
+    protocol   = string
+    port       = number
+    source_ips = optional(list(string))
   }))
-  default = []
-  description = "Additional firewall rules with protocol and port"
+  default     = []
+  description = "Additional inbound firewall rules with protocol, port and optional source_ips (CIDR blocks; omitted means all IPv4 and IPv6 addresses)"
 }
 
 variable "keep_disk_size_to_allow_downgrades" {

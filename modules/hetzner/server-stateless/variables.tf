@@ -38,11 +38,19 @@ variable "network_id" {
 
 variable "additional_firewall_rules" {
   type = list(object({
-    protocol = string
-    port     = number
+    protocol   = string
+    port       = number
+    source_ips = optional(list(string))
   }))
-  default = []
-  description = "Additional firewall rules with protocol and port"
+  default     = []
+  description = "Additional inbound firewall rules with protocol, port and optional source_ips (CIDR blocks; omitted means all IPv4 and IPv6 addresses)"
+}
+
+variable "web_source_ips" {
+  type        = list(string)
+  default     = ["0.0.0.0/0", "::/0"]
+  nullable    = false
+  description = "Source CIDR blocks allowed to reach the base HTTP (80) and HTTPS (443) rules. Port 937 (SSH) stays open to all addresses."
 }
 
 variable "keep_disk_size_to_allow_downgrades" {

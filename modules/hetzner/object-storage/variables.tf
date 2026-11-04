@@ -19,8 +19,8 @@ variable "zone" {
 variable "buckets" {
   description = "Map of S3 buckets to create"
   type = map(object({
-    name                    = string
-    acl                     = optional(string, "private")
+    name = string
+    acl  = optional(string, "private")
   }))
 
   validation {

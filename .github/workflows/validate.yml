@@ -68,7 +68,7 @@ jobs:
         if: steps.changes.outputs.run == 'true'
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: "1.5.0"
+          terraform_version: "1.15.9"
 
       - name: Terraform Init
         if: steps.changes.outputs.run == 'true'
@@ -78,6 +78,13 @@ jobs:
       - name: Terraform Validate
         if: steps.changes.outputs.run == 'true'
         run: terraform validate
+        working-directory: modules/${{ matrix.module }}
+
+      # Only modules with a tests/ directory have tests; they mock their providers, so
+      # they need no credentials.
+      - name: Terraform Test
+        if: steps.changes.outputs.run == 'true' && hashFiles(format('modules/{0}/tests/*.tftest.hcl', matrix.module)) != ''
+        run: terraform test
         working-directory: modules/${{ matrix.module }}
 
   # Aggregates the matrix above into one check with a stable name. The individual legs are

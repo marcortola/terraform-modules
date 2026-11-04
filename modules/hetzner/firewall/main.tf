@@ -5,13 +5,10 @@ resource "hcloud_firewall" "ingress" {
     for_each = var.rule
 
     content {
-      direction = "in"
-      protocol  = rule.value.protocol
-      port      = rule.value.port
-      source_ips = [
-        "0.0.0.0/0",
-        "::/0"
-      ]
+      direction  = "in"
+      protocol   = rule.value.protocol
+      port       = rule.value.port
+      source_ips = rule.value.source_ips
     }
   }
 
