@@ -41,7 +41,7 @@ terraform {
     }
     minio = {
       source  = "aminueza/minio"
-      version = "~> 2.0"
+      version = "~> 3.44"
     }
   }
 }
@@ -368,11 +368,13 @@ module "web" {
 
 ### hetzner/object-storage
 
-S3-compatible object storage buckets.
+S3-compatible object storage buckets, each with an optional bucket policy and CORS rules.
+The module configures the `aminueza/minio` provider (3.44 or later) with
+`s3_compat_mode = true`, which the provider requires on non-MinIO backends.
 
 ```hcl
 module "storage" {
-  source = "git::https://github.com/marcortola/terraform-modules.git//modules/hetzner/object-storage?ref=v1.0.0"
+  source = "git::https://github.com/marcortola/terraform-modules.git//modules/hetzner/object-storage?ref=v1.10.0"
 
   s3_access_key = var.s3_access_key
   s3_secret_key = var.s3_secret_key
@@ -387,25 +389,60 @@ module "storage" {
       name = "myapp-private"
       acl  = "private"
     }
+    # Objects readable by URL, bucket not listable, browser uploads from the app.
+    uploads = {
+      name = "myapp-uploads"
+      policy = jsonencode({
+        Version = "2012-10-17"
+        Statement = [{
+          Effect    = "Allow"
+          Principal = { AWS = ["*"] }
+          Action    = ["s3:GetObject"]
+          Resource  = ["arn:aws:s3:::myapp-uploads/*"]
+        }]
+      })
+      cors_rules = [{
+        allowed_origins = ["https://app.example.com"]
+        allowed_methods = ["PUT"]
+        allowed_headers = ["content-type"]
+      }]
+    }
   }
 }
 ```
 
-| Variable        | Required | Default | Description               |
-|-----------------|----------|---------|---------------------------|
-| `s3_access_key` | yes      | -       | S3 access key             |
-| `s3_secret_key` | yes      | -       | S3 secret key             |
-| `buckets`       | yes      | -       | Map of bucket definitions |
-| `zone`          | no       | `nbg1`  | Object storage region     |
+| Variable        | Required | Default | Description                           |
+|-----------------|----------|---------|---------------------------------------|
+| `s3_access_key` | yes      | -       | S3 access key                         |
+| `s3_secret_key` | yes      | -       | S3 secret key                         |
+| `buckets`       | yes      | -       | Map of bucket definitions (see below) |
+| `zone`          | no       | `nbg1`  | Object storage region                 |
 
-Bucket ACL options: `private`, `public-read`, `public-read-write`
+Bucket fields:
 
-| Output               | Description                  |
-|----------------------|------------------------------|
-| `bucket_names`       | Map of bucket names          |
-| `bucket_urls`        | Map of bucket domain URLs    |
-| `public_bucket_urls` | URLs for public buckets only |
-| `endpoint`           | S3 endpoint URL              |
+- `name` (required): bucket name
+- `acl` (optional, default `private`): `private`, `public-read` or `public-read-write`.
+  The provider's `acl` is not an S3 ACL but a canned bucket policy: `public-read` writes
+  one that also grants `s3:ListBucket`, so anyone can list the bucket's objects.
+- `policy` (optional): bucket policy as a JSON object, such as the output of
+  `jsonencode()`. It requires `acl = "private"`, because any other `acl` writes the same
+  bucket policy. Use it for access `acl` cannot express, such as `s3:GetObject` without
+  `s3:ListBucket`.
+- `cors_rules` (optional, default `[]`): CORS rules, each with `allowed_origins` and
+  `allowed_methods` (`GET`, `PUT`, `POST`, `DELETE`, `HEAD`) and optional
+  `allowed_headers`, `expose_headers` and `max_age_seconds`.
+
+`policy` and `cors_rules` require v1.10.0 or later; older versions silently ignore them.
+
+| Output               | Description                              |
+|----------------------|------------------------------------------|
+| `bucket_names`       | Map of bucket names                      |
+| `bucket_urls`        | Map of bucket domain URLs                |
+| `public_bucket_urls` | URLs for public buckets by `acl` (below) |
+| `endpoint`           | S3 endpoint URL                          |
+
+`public_bucket_urls` lists only `public-read` and `public-read-write` buckets: a bucket
+made public by its `policy` keeps `acl = "private"` and is not included.
 
 ---
 
