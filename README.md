@@ -266,6 +266,9 @@ module "database" {
   os              = "ubuntu-24.04"
   enable_backups  = true
 
+  # Optional audit account for new servers (requires v1.11.0 or later).
+  audit_ssh_public_key = trimspace(file("~/.ssh/audit.pub"))
+
   # source_ips requires v1.9.0 or later; older versions silently ignore it and
   # open the port to all addresses.
   additional_firewall_rules = [
@@ -286,6 +289,7 @@ module "database" {
 | `os`                        | no       | `ubuntu-24.04` | OS image                             |
 | `enable_backups`            | no       | `true`         | Enable Hetzner backups               |
 | `additional_firewall_rules` | no       | `[]`           | Extra rules to open (see below)      |
+| `audit_ssh_public_key`      | no       | `null`         | Audit account key (see below)        |
 
 | Output       | Description                   |
 |--------------|-------------------------------|
@@ -300,6 +304,9 @@ module "database" {
   `source_ips` list of CIDR blocks (see [hetzner/firewall](#hetznerfirewall)); without
   `source_ips` the rule accepts `0.0.0.0/0` and `::/0`. `source_ips` requires v1.9.0
   or later: older versions silently ignore it and open the port to all addresses.
+- `audit_ssh_public_key` adds a locked `audit` account to cloud-init (see
+  [Audit account](#audit-account)); it only affects newly created servers, since
+  `user_data` is in `ignore_changes`
 
 ---
 
@@ -320,6 +327,9 @@ module "web" {
   zone            = "nbg1"
   instances_count = 3
   prevent_destroy = false
+
+  # Optional audit account for new servers (requires v1.11.0 or later).
+  audit_ssh_public_key = trimspace(file("~/.ssh/audit.pub"))
 
   # Accept HTTP and HTTPS only from these CIDR blocks (default: all addresses).
   # Port 937 (SSH) stays open to all. web_source_ips and per-rule source_ips
@@ -349,6 +359,7 @@ module "web" {
 | `prevent_destroy`           | no       | `false`                  | Enable delete protection                     |
 | `web_source_ips`            | no       | `["0.0.0.0/0", "::/0"]`  | CIDR blocks allowed on ports 80 and 443      |
 | `additional_firewall_rules` | no       | `[]`                     | Extra rules to open (see below)              |
+| `audit_ssh_public_key`      | no       | `null`                   | Audit account key (see below)                |
 
 | Output       | Description                   |
 |--------------|-------------------------------|
@@ -363,6 +374,9 @@ module "web" {
   `source_ips` list of CIDR blocks (see [hetzner/firewall](#hetznerfirewall)); without
   `source_ips` the rule accepts `0.0.0.0/0` and `::/0`. `source_ips` requires v1.9.0
   or later: older versions silently ignore it and open the port to all addresses.
+- `audit_ssh_public_key` adds a locked `audit` account to cloud-init (see
+  [Audit account](#audit-account)); it only affects newly created servers, since
+  `user_data` is in `ignore_changes`
 
 ---
 
@@ -620,6 +634,31 @@ All servers are provisioned with cloud-init that:
 ```bash
 ssh -p 937 kamal@<server-ip>
 ```
+
+### Audit account
+
+Both server modules take an optional `audit_ssh_public_key` (v1.11.0 or later). It must
+be a single line starting with `ssh-`, with no newline, so wrap `file()` in `trimspace()`.
+When it is set, cloud-init also:
+
+- Creates an `audit` user with a locked password, shell `/bin/sh`, no groups and no sudo
+  rule. The shell is a real one because sshd runs a forced command through the login
+  shell; `nologin` would refuse it.
+- Installs the key as that user's only authorized key, restricted to a forced command:
+
+  ```text
+  restrict,command="/usr/local/bin/infra-audit-dispatch" ssh-ed25519 AAAA... comment
+  ```
+
+- Writes `AllowUsers kamal audit` to `sshd_config` instead of `AllowUsers kamal`.
+
+The modules do not install `/usr/local/bin/infra-audit-dispatch`, the scripts it runs, or
+any sudoers rules they need; those come from the consumer's own installer. Until that
+installer runs, every `audit` login fails closed because the forced command does not exist.
+
+Like the rest of cloud-init, this only takes effect on newly created servers: `user_data`
+is in `ignore_changes`, so setting or changing the key never touches existing servers.
+With the variable unset, the rendered cloud-init is byte-identical to v1.10.0's.
 
 ---
 
