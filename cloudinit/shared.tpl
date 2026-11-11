@@ -20,6 +20,13 @@ users:
       - ALL=(ALL) NOPASSWD:ALL
     ssh_authorized_keys:
       - ${ssh_authorized_key}
+%{ if audit_ssh_public_key != null ~}
+  - name: audit
+    lock_passwd: true
+    shell: /bin/sh
+    ssh_authorized_keys:
+      - 'restrict,command="/usr/local/bin/infra-audit-dispatch" ${replace(audit_ssh_public_key, "'", "''")}'
+%{ endif ~}
 
 packages:
   - apt-transport-https
@@ -69,7 +76,7 @@ write_files:
       UsePAM yes
       MaxAuthTries 3
       AllowAgentForwarding no
-      AllowUsers kamal
+      AllowUsers kamal%{ if audit_ssh_public_key != null } audit%{ endif }
 
 runcmd:
   - apt-get remove -y --purge snapd snap

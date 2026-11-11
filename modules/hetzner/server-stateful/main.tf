@@ -1,4 +1,10 @@
 locals {
+  # Exposed as a local so the module tests can assert on the rendered text.
+  shared_cloud_config = templatefile("${path.module}/../../../cloudinit/shared.tpl", {
+    ssh_authorized_key   = var.ssh_key_resource.public_key
+    audit_ssh_public_key = var.audit_ssh_public_key
+  })
+
   base_firewall_rules = [
     {
       protocol = "tcp"
@@ -63,9 +69,7 @@ data "cloudinit_config" "data_cloudinit_config_server" {
 
   part {
     content_type = "text/cloud-config"
-    content = templatefile("${path.module}/../../../cloudinit/shared.tpl", {
-      ssh_authorized_key = var.ssh_key_resource.public_key
-    })
+    content      = local.shared_cloud_config
   }
 
   part {
