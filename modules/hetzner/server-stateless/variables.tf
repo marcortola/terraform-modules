@@ -82,12 +82,12 @@ variable "additional_cloudinit_parts" {
 }
 
 variable "audit_ssh_public_key" {
-  description = "Optional SSH public key for an `audit` account created by cloud-init: password locked, shell /bin/sh, no groups or sudo, and the key restricted to the forced command /usr/local/bin/infra-audit-dispatch, which the consumer installs. When set, sshd also allows `audit` (AllowUsers kamal audit). One line starting with `ssh-` and no trailing newline (wrap file() in trimspace()). Applies only on fresh hosts (user_data is in ignore_changes). Null renders the same cloud-init as before."
+  description = "Optional SSH public key for an `audit` account created by cloud-init: password locked, shell /bin/sh, no supplementary groups or sudo, and the key restricted to the forced command /usr/local/bin/infra-audit-dispatch, which the consumer installs. When set, sshd also allows `audit` (AllowUsers kamal audit). One line starting with `ssh-` and no trailing newline (wrap file() in trimspace()). Applies only on fresh hosts (user_data is in ignore_changes). Null renders the same cloud-init as before."
   type        = string
   default     = null
 
   validation {
-    condition     = var.audit_ssh_public_key == null || can(regex("^ssh-[^\\r\\n]*$", var.audit_ssh_public_key))
+    condition     = var.audit_ssh_public_key == null || can(regex("^ssh-[^[:cntrl:]]*$", var.audit_ssh_public_key))
     error_message = "audit_ssh_public_key must be null or a single line starting with \"ssh-\" (no newline)."
   }
 }

@@ -142,6 +142,16 @@ run "audit_key_with_trailing_newline_is_rejected" {
   expect_failures = [var.audit_ssh_public_key]
 }
 
+run "audit_key_with_control_character_is_rejected" {
+  command = plan
+
+  variables {
+    audit_ssh_public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAuditKeyOnly audit\u001b[0m"
+  }
+
+  expect_failures = [var.audit_ssh_public_key]
+}
+
 run "audit_key_empty_string_is_rejected" {
   command = plan
 

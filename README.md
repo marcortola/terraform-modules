@@ -641,7 +641,7 @@ Both server modules take an optional `audit_ssh_public_key` (v1.11.0 or later). 
 be a single line starting with `ssh-`, with no newline, so wrap `file()` in `trimspace()`.
 When it is set, cloud-init also:
 
-- Creates an `audit` user with a locked password, shell `/bin/sh`, no groups and no sudo
+- Creates an `audit` user with a locked password, shell `/bin/sh`, no supplementary groups and no sudo
   rule. The shell is a real one because sshd runs a forced command through the login
   shell; `nologin` would refuse it.
 - Installs the key as that user's only authorized key, restricted to a forced command:
