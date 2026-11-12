@@ -5,10 +5,10 @@ locals {
     audit_ssh_public_key = var.audit_ssh_public_key
   })
 
-  # web_ports_enabled = false omits 80 and 443 and ignores web_source_ips, so the
+  # enable_web_ports = false omits 80 and 443 and ignores web_source_ips, so the
   # firewall holds only 937 plus additional_firewall_rules (for example a worker).
   # With the default the order stays 80, 443, 937.
-  web_firewall_rules = var.web_ports_enabled ? [
+  web_firewall_rules = var.enable_web_ports ? [
     {
       protocol   = "tcp"
       port       = 80

@@ -50,10 +50,10 @@ variable "web_source_ips" {
   type        = list(string)
   default     = ["0.0.0.0/0", "::/0"]
   nullable    = false
-  description = "Source CIDR blocks allowed to reach the base HTTP (80) and HTTPS (443) rules. Port 937 (SSH) stays open to all addresses. Ignored when web_ports_enabled is false."
+  description = "Source CIDR blocks allowed to reach the base HTTP (80) and HTTPS (443) rules. Port 937 (SSH) stays open to all addresses. Ignored when enable_web_ports is false."
 }
 
-variable "web_ports_enabled" {
+variable "enable_web_ports" {
   type        = bool
   default     = true
   nullable    = false

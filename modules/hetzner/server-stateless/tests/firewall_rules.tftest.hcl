@@ -128,13 +128,13 @@ run "additional_rules_with_and_without_source_ips" {
   }
 }
 
-# A worker serves no web traffic: with web_ports_enabled = false the firewall holds
+# A worker serves no web traffic: with enable_web_ports = false the firewall holds
 # only port 937 (SSH), open to all addresses.
 run "web_ports_disabled_renders_only_ssh" {
   command = plan
 
   variables {
-    web_ports_enabled = false
+    enable_web_ports = false
   }
 
   assert {
@@ -162,7 +162,7 @@ run "web_ports_disabled_keeps_additional_rules_in_order" {
   command = plan
 
   variables {
-    web_ports_enabled = false
+    enable_web_ports = false
     additional_firewall_rules = [
       { protocol = "tcp", port = 9100, source_ips = ["10.0.0.5/32"] },
       { protocol = "udp", port = 51820 },
@@ -193,8 +193,8 @@ run "web_ports_disabled_ignores_web_source_ips" {
   command = plan
 
   variables {
-    web_ports_enabled = false
-    web_source_ips    = ["173.245.48.0/20", "203.0.113.10/32"]
+    enable_web_ports = false
+    web_source_ips   = ["173.245.48.0/20", "203.0.113.10/32"]
   }
 
   assert {
@@ -208,15 +208,15 @@ run "web_ports_disabled_ignores_web_source_ips" {
   }
 }
 
-run "null_web_ports_enabled_keeps_web_ports" {
+run "null_enable_web_ports_keeps_web_ports" {
   command = plan
 
   variables {
-    web_ports_enabled = null
+    enable_web_ports = null
   }
 
   assert {
     condition     = [for r in local.all_firewall_rules : r.port] == [80, 443, 937]
-    error_message = "A null web_ports_enabled must keep the default base rules (80, 443, 937)."
+    error_message = "A null enable_web_ports must keep the default base rules (80, 443, 937)."
   }
 }
