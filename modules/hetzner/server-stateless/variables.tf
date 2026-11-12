@@ -50,7 +50,14 @@ variable "web_source_ips" {
   type        = list(string)
   default     = ["0.0.0.0/0", "::/0"]
   nullable    = false
-  description = "Source CIDR blocks allowed to reach the base HTTP (80) and HTTPS (443) rules. Port 937 (SSH) stays open to all addresses."
+  description = "Source CIDR blocks allowed to reach the base HTTP (80) and HTTPS (443) rules. Port 937 (SSH) stays open to all addresses. Ignored when enable_web_ports is false."
+}
+
+variable "enable_web_ports" {
+  type        = bool
+  default     = true
+  nullable    = false
+  description = "Whether the base firewall opens HTTP (80) and HTTPS (443) to web_source_ips. False omits both base rules and leaves port 937 (SSH, open to all addresses) plus additional_firewall_rules, for servers that serve no web traffic such as workers."
 }
 
 variable "keep_disk_size_to_allow_downgrades" {

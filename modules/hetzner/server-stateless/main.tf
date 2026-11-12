@@ -5,8 +5,10 @@ locals {
     audit_ssh_public_key = var.audit_ssh_public_key
   })
 
-  # Port 937 (SSH) keeps the firewall module's default sources: all IPv4 and IPv6 addresses.
-  base_firewall_rules = [
+  # enable_web_ports = false omits 80 and 443 and ignores web_source_ips, so the
+  # firewall holds only 937 plus additional_firewall_rules (for example a worker).
+  # With the default the order stays 80, 443, 937.
+  web_firewall_rules = var.enable_web_ports ? [
     {
       protocol   = "tcp"
       port       = 80
@@ -17,12 +19,16 @@ locals {
       port       = 443
       source_ips = var.web_source_ips
     },
+  ] : []
+
+  # Port 937 (SSH) keeps the firewall module's default sources: all IPv4 and IPv6 addresses.
+  base_firewall_rules = concat(local.web_firewall_rules, [
     {
       protocol   = "tcp"
       port       = 937
       source_ips = null
     }
-  ]
+  ])
 
   all_firewall_rules = concat(local.base_firewall_rules, var.additional_firewall_rules)
 }
