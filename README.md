@@ -347,6 +347,28 @@ module "web" {
 }
 ```
 
+A server that serves no web traffic, such as a background worker, can drop ports
+80 and 443 so its firewall holds only SSH plus its additional rules
+(`web_ports_enabled` requires v1.12.0 or later; older versions reject it):
+
+```hcl
+module "worker" {
+  source = "git::https://github.com/marcortola/terraform-modules.git//modules/hetzner/server-stateless?ref=v1.12.0"
+
+  name       = "worker"
+  type       = "cx22"
+  network_id = module.network.vpc_id
+  ssh_key_resource = hcloud_ssh_key.default
+
+  # Firewall: port 937 (SSH) from all addresses, then the rules below.
+  web_ports_enabled = false
+
+  additional_firewall_rules = [
+    { protocol = "tcp", port = 9100, source_ips = ["203.0.113.20/32"] }, # node exporter, monitoring host
+  ]
+}
+```
+
 | Variable                    | Required | Default                  | Description                                  |
 |-----------------------------|----------|--------------------------|----------------------------------------------|
 | `name`                      | yes      | -                        | Name identifier                              |
@@ -357,6 +379,7 @@ module "web" {
 | `instances_count`           | no       | `1`                      | Number of servers                            |
 | `os`                        | no       | `ubuntu-24.04`           | OS image                                     |
 | `prevent_destroy`           | no       | `false`                  | Enable delete protection                     |
+| `web_ports_enabled`         | no       | `true`                   | Open ports 80 and 443 (see below)            |
 | `web_source_ips`            | no       | `["0.0.0.0/0", "::/0"]`  | CIDR blocks allowed on ports 80 and 443      |
 | `additional_firewall_rules` | no       | `[]`                     | Extra rules to open (see below)              |
 | `audit_ssh_public_key`      | no       | `null`                   | Audit account key (see below)                |
@@ -370,6 +393,9 @@ module "web" {
 - No automatic backups (unlike stateful)
 - Base firewall opens ports 80 and 443 to `web_source_ips` (all addresses by default)
   and port 937 (SSH) to all addresses
+- `web_ports_enabled = false` omits the 80 and 443 rules and ignores `web_source_ips`;
+  the firewall then holds port 937 (SSH, all addresses) followed by
+  `additional_firewall_rules`. The default renders the same rules as v1.11.0
 - Each `additional_firewall_rules` entry takes `protocol`, `port` and an optional
   `source_ips` list of CIDR blocks (see [hetzner/firewall](#hetznerfirewall)); without
   `source_ips` the rule accepts `0.0.0.0/0` and `::/0`. `source_ips` requires v1.9.0

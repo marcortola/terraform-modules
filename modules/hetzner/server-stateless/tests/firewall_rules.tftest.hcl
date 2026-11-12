@@ -127,3 +127,96 @@ run "additional_rules_with_and_without_source_ips" {
     error_message = "Port 937 (SSH) must stay open to all addresses."
   }
 }
+
+# A worker serves no web traffic: with web_ports_enabled = false the firewall holds
+# only port 937 (SSH), open to all addresses.
+run "web_ports_disabled_renders_only_ssh" {
+  command = plan
+
+  variables {
+    web_ports_enabled = false
+  }
+
+  assert {
+    condition     = [for r in local.all_firewall_rules : r.port] == [937]
+    error_message = "Without web ports the only rule must be 937."
+  }
+
+  assert {
+    condition = toset([for r in module.firewall.rules : {
+      direction  = r.direction
+      protocol   = r.protocol
+      port       = r.port
+      source_ips = r.source_ips
+      }]) == toset([{
+      direction  = "in"
+      protocol   = "tcp"
+      port       = "937"
+      source_ips = toset(["0.0.0.0/0", "::/0"])
+    }])
+    error_message = "Without web ports the firewall must hold exactly inbound TCP 937 from 0.0.0.0/0 and ::/0."
+  }
+}
+
+run "web_ports_disabled_keeps_additional_rules_in_order" {
+  command = plan
+
+  variables {
+    web_ports_enabled = false
+    additional_firewall_rules = [
+      { protocol = "tcp", port = 9100, source_ips = ["10.0.0.5/32"] },
+      { protocol = "udp", port = 51820 },
+    ]
+  }
+
+  assert {
+    condition     = [for r in local.all_firewall_rules : r.port] == [937, 9100, 51820]
+    error_message = "Without web ports the rules must be 937 followed by the additional rules, in order."
+  }
+
+  assert {
+    condition = toset([for r in module.firewall.rules : {
+      direction  = r.direction
+      protocol   = r.protocol
+      port       = r.port
+      source_ips = r.source_ips
+      }]) == toset([
+      { direction = "in", protocol = "tcp", port = "937", source_ips = toset(["0.0.0.0/0", "::/0"]) },
+      { direction = "in", protocol = "tcp", port = "9100", source_ips = toset(["10.0.0.5/32"]) },
+      { direction = "in", protocol = "udp", port = "51820", source_ips = toset(["0.0.0.0/0", "::/0"]) },
+    ])
+    error_message = "Without web ports the firewall must hold 937 plus the additional rules with their own sources."
+  }
+}
+
+run "web_ports_disabled_ignores_web_source_ips" {
+  command = plan
+
+  variables {
+    web_ports_enabled = false
+    web_source_ips    = ["173.245.48.0/20", "203.0.113.10/32"]
+  }
+
+  assert {
+    condition     = [for r in module.firewall.rules : r.port] == ["937"]
+    error_message = "web_source_ips must not bring back ports 80 or 443 when web ports are disabled."
+  }
+
+  assert {
+    condition     = alltrue([for r in module.firewall.rules : !contains(r.source_ips, "173.245.48.0/20") && !contains(r.source_ips, "203.0.113.10/32")])
+    error_message = "No rule may accept web_source_ips when web ports are disabled."
+  }
+}
+
+run "null_web_ports_enabled_keeps_web_ports" {
+  command = plan
+
+  variables {
+    web_ports_enabled = null
+  }
+
+  assert {
+    condition     = [for r in local.all_firewall_rules : r.port] == [80, 443, 937]
+    error_message = "A null web_ports_enabled must keep the default base rules (80, 443, 937)."
+  }
+}
