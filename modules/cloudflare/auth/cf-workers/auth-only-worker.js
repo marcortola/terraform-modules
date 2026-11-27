@@ -16,8 +16,8 @@ async function handleRequest(request) {
         return secureResponse(url, await fetch(request));
     }
 
-    // Send plain http to https before asking for credentials, so a browser
-    // never sends them in clear.
+    // Send plain http to https before asking for credentials: the Worker never
+    // challenges over http, and HSTS keeps later visits on https.
     if (url.protocol === 'http:') {
         return redirectToHttps(request, url);
     }

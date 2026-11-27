@@ -8,6 +8,11 @@
 // secret globals on self are stubbed. The stub fetch returns responses whose
 // headers throw on mutation, as fetch() responses do in Workers, so a script
 // that sets a header without copying the response first fails here.
+//
+// Node's URL is the WHATWG parser. The module sets no compatibility_date, so the
+// Workers runtime uses its legacy URL parser, which can normalise edge cases such
+// as repeated slashes differently; the post-apply live checks cover the real
+// runtime.
 
 'use strict';
 

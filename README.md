@@ -5,8 +5,9 @@ Reusable Terraform modules for provisioning infrastructure on **Hetzner Cloud** 
 ## Prerequisites
 
 - Terraform 1.3 or later; the supported optional Nix devShell pins it (`direnv allow` or
-  `nix develop`), but a compatible native installation also works. The module tests
-  (`terraform test` in a module that has a `tests/` directory) need Terraform 1.7 or later.
+  `nix develop`), but a compatible native installation also works. The Terraform module tests
+  (`terraform test` in a module with `tests/*.tftest.hcl` files) need Terraform 1.7 or later. The
+  `cloudflare/auth` Worker tests need Node 22 or later (`node --test 'modules/cloudflare/auth/**/*.test.js'`).
 - Hetzner Cloud API token
 - Cloudflare API token (for DNS/auth modules)
 - S3 credentials (for object storage module)
@@ -586,7 +587,8 @@ Subdomain options:
      not skip auth.
   2. Any other `http://` request is redirected to the same URL on `https://`, with host, path and query kept and any
      port dropped: `301` for `GET` and `HEAD`, `308` for every other method. The redirect happens before basic auth,
-     so a browser never sends credentials over plain http.
+     so the Worker never asks for credentials over plain http and HSTS keeps later visits on https. A browser that
+     saved credentials for an `http://` name before v1.13.0 may still send them once before it is redirected.
   3. Basic auth and/or the `X-Robots-Tag: noindex, nofollow` header, as configured for the subdomain. A malformed
      `Authorization: Basic` header answers `401`.
 - Every https response, the `401` included, carries `Strict-Transport-Security: max-age=31536000` (no
