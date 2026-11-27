@@ -5,8 +5,9 @@ Reusable Terraform modules for provisioning infrastructure on **Hetzner Cloud** 
 ## Prerequisites
 
 - Terraform 1.3 or later; the supported optional Nix devShell pins it (`direnv allow` or
-  `nix develop`), but a compatible native installation also works. The module tests
-  (`terraform test` in a module that has a `tests/` directory) need Terraform 1.7 or later.
+  `nix develop`), but a compatible native installation also works. The Terraform module tests
+  (`terraform test` in a module with `tests/*.tftest.hcl` files) need Terraform 1.7 or later. The
+  `cloudflare/auth` Worker tests need Node 22 or later (`node --test 'modules/cloudflare/auth/**/*.test.js'`).
 - Hetzner Cloud API token
 - Cloudflare API token (for DNS/auth modules)
 - S3 credentials (for object storage module)
@@ -542,7 +543,7 @@ Record fields:
 
 ### cloudflare/auth
 
-HTTP Basic Auth and/or noindex headers via Cloudflare Workers.
+HTTP Basic Auth and/or noindex headers via Cloudflare Workers, which also redirect http to https and send HSTS.
 
 ```hcl
 module "auth" {
@@ -579,8 +580,23 @@ Subdomain options:
 
 **Notes:**
 
-- `.well-known` paths are excluded from auth (for ACME validation)
-- Three worker scripts are deployed based on auth/noindex combinations
+- Three worker scripts are deployed based on auth/noindex combinations. Each handles a request in this order:
+  1. A path starting with `/.well-known/` goes to the origin over http or https, with no auth, no redirect and no
+     `X-Robots-Tag`. This keeps ACME HTTP-01 issuance and renewal working when the origin obtains its own certificate,
+     because the challenge arrives over plain http. Only the path is matched, so `.well-known` in a query string does
+     not skip auth.
+  2. Any other `http://` request is redirected to the same URL on `https://`, with host, path and query kept and any
+     port dropped: `301` for `GET` and `HEAD`, `308` for every other method. The redirect happens before basic auth,
+     so the Worker never asks for credentials over plain http and HSTS keeps later visits on https. A browser that
+     saved credentials for an `http://` name before v1.13.0 may still send them once before it is redirected.
+  3. Basic auth and/or the `X-Robots-Tag: noindex, nofollow` header, as configured for the subdomain. A malformed
+     `Authorization: Basic` header answers `401`.
+- Every https response, the `401` included, carries `Strict-Transport-Security: max-age=31536000` (no
+  `includeSubDomains`, no `preload`). If the origin already sends `Strict-Transport-Security`, its value is kept. Http
+  responses, redirects included, never carry it, and protocol switches (`101`, WebSockets) pass through unchanged.
+- From v1.13.0, every protected name must have an edge certificate, because http is redirected to https. Universal
+  SSL covers the zone apex and first-level subdomains only, so a `name` containing a dot (such as `app.staging`) needs
+  an Advanced or custom certificate, or its https URL fails.
 
 ---
 

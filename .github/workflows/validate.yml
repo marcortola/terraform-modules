@@ -80,12 +80,24 @@ jobs:
         run: terraform validate
         working-directory: modules/${{ matrix.module }}
 
-      # Only modules with a tests/ directory have tests; they mock their providers, so
-      # they need no credentials.
+      # Only modules with tests/*.tftest.hcl files have Terraform tests; they mock their
+      # providers, so they need no credentials.
       - name: Terraform Test
         if: steps.changes.outputs.run == 'true' && hashFiles(format('modules/{0}/tests/*.tftest.hcl', matrix.module)) != ''
         run: terraform test
         working-directory: modules/${{ matrix.module }}
+
+      # The cloudflare/auth Worker scripts are JavaScript; node:test runs their behaviour
+      # tests without npm dependencies. A failing test fails this leg and validate-complete.
+      - name: Setup Node
+        if: steps.changes.outputs.run == 'true' && matrix.module == 'cloudflare/auth'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Worker Tests
+        if: steps.changes.outputs.run == 'true' && matrix.module == 'cloudflare/auth'
+        run: node --test 'modules/cloudflare/auth/**/*.test.js'
 
   # Aggregates the matrix above into one check with a stable name. The individual legs are
   # named "Validate Terraform (cloudflare/dns)" and so on, so they expand and rename as
